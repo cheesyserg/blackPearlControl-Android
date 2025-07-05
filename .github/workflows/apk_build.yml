@@ -31,17 +31,14 @@ jobs:
         run: echo "APK_PATH=$(find $PWD/app/build/outputs/apk/release -name '*.apk' | head -n 1)" >> $GITHUB_OUTPUT
 
       - name: Set remote URL with PAT
-        run: |
-          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
+        run: git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
 
-      - name: Create Git Tag
+      - name: Create and Push Git Tag
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git tag ${{ github.event.inputs.tag_name }}
           git push origin ${{ github.event.inputs.tag_name }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
