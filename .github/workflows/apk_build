@@ -1,14 +1,14 @@
-name: Build & Publish APK
+name: Build & Release APK
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    tags:
+      - 'v*'  # Triggers only on tags starting with "v" (e.g. v1.0.0)
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -24,8 +24,13 @@ jobs:
       - name: Build release APK
         run: ./gradlew assembleRelease
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Get APK path
+        id: apk
+        run: echo "APK_PATH=$(find $PWD/app/build/outputs/apk/release -name '*.apk' | head -n 1)" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: app-release-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          files: ${{ steps.apk.outputs.APK_PATH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
