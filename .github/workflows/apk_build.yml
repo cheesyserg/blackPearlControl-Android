@@ -36,6 +36,9 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_FILE }}" | base64 -d > my-release-key.keystore
 
+      - name: Add Android build-tools to PATH (for zipalign)
+        run: echo "${ANDROID_HOME}/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)" >> $GITHUB_PATH
+
       - name: Zipalign APK
         run: |
           zipalign -v -p 4 "${{ steps.apk.outputs.APK_PATH }}" aligned.apk
