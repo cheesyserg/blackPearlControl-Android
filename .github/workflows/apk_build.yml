@@ -1,4 +1,4 @@
-name: Build, Sign & Release APK
+name: Build, Sign, Zipalign & Release APK
 
 on:
   workflow_dispatch:
@@ -26,27 +26,30 @@ jobs:
       - name: Build release APK
         run: ./gradlew assembleRelease
 
-      - name: Get APK path
+      - name: Find APK Path
         id: apk
         run: |
-          echo "APK_PATH=$(find $PWD/app/build/outputs/apk/release -name '*.apk' | head -n 1)" >> $GITHUB_OUTPUT
+          APK=$(find $PWD/app/build/outputs/apk/release -name '*.apk' | head -n 1)
+          echo "APK_PATH=$APK" >> $GITHUB_OUTPUT
 
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_FILE }}" | base64 -d > my-release-key.keystore
 
+      - name: Zipalign APK
+        run: |
+          zipalign -v -p 4 "${{ steps.apk.outputs.APK_PATH }}" aligned.apk
+
       - name: Sign APK
         run: |
-          APK="${{ steps.apk.outputs.APK_PATH }}"
           jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
             -keystore my-release-key.keystore \
             -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
             -keypass "${{ secrets.KEY_PASSWORD }}" \
-            "$APK" "${{ secrets.KEY_ALIAS }}"
+            aligned.apk "${{ secrets.KEY_ALIAS }}"
 
       - name: Verify APK signature
-        run: |
-          jarsigner -verify "${{ steps.apk.outputs.APK_PATH }}"
+        run: jarsigner -verify aligned.apk
 
       - name: Set remote URL with PAT
         run: git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
@@ -62,6 +65,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag_name }}
-          files: ${{ steps.apk.outputs.APK_PATH }}
+          files: aligned.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
