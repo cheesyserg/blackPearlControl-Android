@@ -26,13 +26,18 @@ jobs:
       - name: Build release APK
         run: ./gradlew assembleRelease
 
+      - name: Get APK path
+        id: apk
+        run: |
+          echo "APK_PATH=$(find $PWD/app/build/outputs/apk/release -name '*.apk' | head -n 1)" >> $GITHUB_OUTPUT
+
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_FILE }}" | base64 -d > my-release-key.keystore
 
       - name: Sign APK
         run: |
-          APK=$(find $PWD/app/build/outputs/apk/release -name '*.apk' | head -n 1)
+          APK="${{ steps.apk.outputs.APK_PATH }}"
           jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
             -keystore my-release-key.keystore \
             -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
@@ -41,8 +46,7 @@ jobs:
 
       - name: Verify APK signature
         run: |
-          APK=$(find $PWD/app/build/outputs/apk/release -name '*.apk' | head -n 1)
-          jarsigner -verify "$APK"
+          jarsigner -verify "${{ steps.apk.outputs.APK_PATH }}"
 
       - name: Set remote URL with PAT
         run: git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
